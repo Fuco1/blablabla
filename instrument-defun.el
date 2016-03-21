@@ -129,7 +129,12 @@
   "Instrument defun after point."
   (let* ((def (sexp-at-point)))
     (save-excursion
-      (fset (cadr def) (eval (litable--instrument-defun def) lexical-binding)))))
+      (fset (cadr def)
+            (eval (litable--instrument-defun def) lexical-binding)))
+    (save-excursion
+      (put (cadr def) 'litable-defun-beg (point))
+      (end-of-defun)
+      (put (cadr def) 'litable-defun-end (point)))))
 
 (defun litable-variable (beg end var value)
   "Add litable overlay over a variable.
