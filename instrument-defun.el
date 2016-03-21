@@ -125,6 +125,8 @@
     (prog1 (litable-instrument-variable form)
       (forward-symbol 1)))))
 
+;; TODO: save relative offsets against defun's top position so we dont
+;; have to reinstrument every time defun moves around
 (defun litable-instrument-defun ()
   "Instrument defun after point."
   (let* ((def (sexp-at-point)))
@@ -136,6 +138,8 @@
       (end-of-defun)
       (put (cadr def) 'litable-defun-end (point)))))
 
+;; TODO: add "form id" to 'litable property so we can only
+;; clear/update specific form's overlays
 (defun litable-variable (beg end var value)
   "Add litable overlay over a variable.
 
@@ -145,6 +149,7 @@ called."
   (ov beg end
       'litable t
       'face 'font-lock-type-face
+      ;; TODO: add better formatter
       'display (format "%s{%S}" (symbol-name var)
                        (cond
                         ((and (consp value)

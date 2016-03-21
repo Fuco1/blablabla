@@ -1,3 +1,6 @@
+;; see side-effect-free-fns in emacs-lisp/byte-opt.el for list of pure
+;; functions
+
 (defun instrument-defun-1 (form vars &optional context)
   (cond
    ((listp form)
@@ -50,6 +53,7 @@
               (down-list)
               (forward-sexp 3)
               `(lambda ,(caddr def)
+                 ;; handle docstring & interactive properly!
                  (litable-args ,(- (save-excursion (backward-sexp) (point)) def-start)
                                ',def-name
                                ',(caddr def)
