@@ -29,9 +29,6 @@
 (require 'dash)
 (require 'ov)
 
-;; TODO: handle &optional
-;; TODO: handle &rest
-;; TODO: handle &key
 (defun litable-instrument-arglist (variables)
   "Instrument arglist with VARIABLES."
   (save-excursion
@@ -39,15 +36,19 @@
     `(progn
        ,@(mapcar
           (lambda (var)
-            `(litable-variable
-              ,(point)
-              ,(progn
-                 (forward-symbol 1)
-                 (prog1 (point)
+            (if (memq var '(&optional &rest &key))
+                (progn
+                  (forward-symbol 2)
+                  (forward-symbol -1))
+              `(litable-variable
+                ,(point)
+                ,(progn
                    (forward-symbol 1)
-                   (forward-symbol -1)))
-              ',var
-              ,var))
+                   (prog1 (point)
+                     (forward-symbol 1)
+                     (forward-symbol -1)))
+                ',var
+                ,var)))
           variables))))
 
 (defun litable-instrument-variable (variable)
