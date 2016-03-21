@@ -139,8 +139,8 @@ VALUE is its current value in the context where this function is
 called."
   (ov beg end
       'litable t
-      'face 'font-lock-warning-face
-      'display (format "%s{%s}" (symbol-name var)
+      'face 'font-lock-type-face
+      'display (format "%s{%S}" (symbol-name var)
                        (cond
                         ((and (consp value)
                               (eq (car value) 'lambda))
