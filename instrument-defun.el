@@ -156,5 +156,68 @@ called."
                         (t value))))
   value)
 
+(defun litable2-refresh (&optional a b c)
+  "A B C."
+  (when a
+    (ignore-errors
+      (let ((form (save-excursion
+                    (litable-goto-toplevel-form)
+                    (sexp-at-point))))
+        (ov-clear 'litable)
+        (when (listp form)
+          ;; re-instrument all defuns which have changed
+          (save-excursion
+            (goto-char (point-min))
+            (while (re-search-forward "^(defun " nil t)
+              (skip-syntax-forward " ")
+              (let ((function-name (symbol-at-point))
+                    (beg (progn (beginning-of-line) (point)))
+                    (end (save-excursion (end-of-defun) (point))))
+                (when (or (/= (get function-name 'litable-defun-beg) beg)
+                          (/= (get function-name 'litable-defun-end) end))
+                  (message "Reinstrument defun %s" function-name)
+                  (litable-instrument-defun)))
+              (end-of-defun)))
+          (eval form))))))
+
+(defun litable2-init ()
+  "Initialize litable in the buffer."
+  (add-hook 'after-change-functions 'litable2-refresh nil t)
+  ;; (add-hook 'post-command-hook 'litable-update-defs-if-moved nil t)
+  )
+
+(defun litable2-stop ()
+  "Stop litable in the buffer."
+  (remove-hook 'after-change-functions 'litable2-refresh t)
+  ;; (remove-hook 'post-command-hook 'litable-update-defs-if-moved t)
+  (ov-clear 'litable))
+
+(defvar litable-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [remap eval-defun] 'litable-eval-defun)
+    map)
+  "litable mode map.")
+
+(defun litable-eval-defun (edebug-it)
+  "Eval defun and instrument it with litable info."
+  (interactive "P")
+  (if edebug-it
+      (edebug-eval-defun t)
+    (edebug-eval-defun nil)
+    (save-excursion
+      (end-of-defun)
+      (beginning-of-defun)
+      (litable-instrument-defun))))
+
+;;;###autoload
+(define-minor-mode litable2-mode
+  "Toggle litable2-mode"
+  :lighter " litable2"
+  :keymap litable-mode-map
+  :group 'litable
+  (if litable2-mode
+      (litable2-init)
+    (litable2-stop)))
+
 (provide 'instrument-defun)
 ;;; instrument-defun.el ends here
