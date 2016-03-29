@@ -202,12 +202,18 @@ called.  DEFNAME is the name of the defun.
               (let ((function-name (symbol-at-point))
                     (beg (progn (beginning-of-line) (point)))
                     (end (save-excursion (end-of-defun) (point))))
-                (when (or (/= (get function-name 'litable-defun-beg) beg)
-                          (/= (get function-name 'litable-defun-end) end))
+                (if (equal
+                     (get function-name 'litable-defun-definition)
+                     (buffer-substring-no-properties beg end))
+                    ;; update the beg/end
+                    (progn
+                      (put function-name 'litable-defun-beg beg)
+                      (put function-name 'litable-defun-end end))
                   (message "Reinstrument defun %s" function-name)
                   (litable-instrument-defun)))
               (end-of-defun)))
-          (eval form))))))
+          (unless (memq (car form) '(defun defmacro cl-defun cl-defmacro))
+            (eval form)))))))
 
 (defun litable2-init ()
   "Initialize litable in the buffer."
