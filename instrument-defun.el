@@ -29,7 +29,13 @@
 (require 'dash)
 (require 'ov)
 
-(defun litable-instrument-arglist (variables)
+(defun litable-point (data)
+  "Return point relative to defun's beginning.
+
+DATA is the data plist."
+  (- (point) (plist-get data :point)))
+
+(defun litable-instrument-arglist (variables data)
   "Instrument arglist with VARIABLES."
   (save-excursion
     (down-list)
@@ -41,28 +47,30 @@
                   (forward-symbol 2)
                   (forward-symbol -1))
               `(litable-variable
-                ,(point)
+                ,(litable-point data)
                 ,(progn
                    (forward-symbol 1)
-                   (prog1 (point)
+                   (prog1 (litable-point data)
                      (forward-symbol 1)
                      (forward-symbol -1)))
                 ',var
-                ,var)))
+                ,var
+                ',(plist-get data :name))))
           variables))))
 
-(defun litable-instrument-variable (variable)
+(defun litable-instrument-variable (variable data)
   "Instrument a single VARIABLE."
   (save-excursion
     `(litable-variable
-      ,(point)
+      ,(litable-point data)
       ,(progn
          (forward-symbol 1)
-         (point))
+         (litable-point data))
       ',variable
-      ,variable)))
+      ,variable
+      ',(plist-get data :name))))
 
-(defun litable-instrument-setq (setq-form)
+(defun litable-instrument-setq (setq-form data)
   "Instrument a SETQ-FORM."
   (save-excursion
     (down-list)
@@ -74,7 +82,7 @@
            (list var (litable--instrument-defun def)))
          (-partition 2 (cdr setq-form))))))
 
-(defun litable--instrument-defun (form &optional data)
+(defun litable--instrument-defun (form data)
   "FORM."
   (cond
    ((consp form)
@@ -83,12 +91,12 @@
       (forward-sexp)
       form)
      ((eq 'setq (car form))
-      (forward-sexp)
-      (litable-instrument-setq form))
+      (prog1 (litable-instrument-setq form data)
+        (forward-sexp)))
      ((eq 'defun (car form))
       (down-list)
       (forward-sexp 2)
-      (let ((arglist (litable-instrument-arglist (caddr form))))
+      (let ((arglist (litable-instrument-arglist (caddr form) data)))
         (forward-sexp 1)
         (-cons*
          'lambda
@@ -109,7 +117,7 @@
       (forward-sexp)
       (prog1 (cons
               (car form)
-              (mapcar (lambda (f) (litable--instrument-defun f)) (cdr form)))
+              (mapcar (lambda (f) (litable--instrument-defun f data)) (cdr form)))
         (up-list)))))
    ((or (stringp form)
         (vectorp form)
@@ -122,31 +130,40 @@
    (t
     (forward-symbol 1)
     (forward-symbol -1)
-    (prog1 (litable-instrument-variable form)
+    (prog1 (litable-instrument-variable form data)
       (forward-symbol 1)))))
 
 ;; TODO: save relative offsets against defun's top position so we dont
 ;; have to reinstrument every time defun moves around
 (defun litable-instrument-defun ()
   "Instrument defun after point."
-  (let* ((def (sexp-at-point)))
+  (let* ((def (sexp-at-point))
+         (data (list :point (point)
+                     :name (cadr def))))
     (save-excursion
       (fset (cadr def)
-            (eval (litable--instrument-defun def) lexical-binding)))
+            (eval (litable--instrument-defun def data) lexical-binding)))
     (save-excursion
-      (put (cadr def) 'litable-defun-beg (point))
-      (end-of-defun)
-      (put (cadr def) 'litable-defun-end (point)))))
+      (let ((beg (point))
+            (end (progn
+                   (end-of-defun)
+                   (point))))
+        (put (cadr def) 'litable-defun-beg beg)
+        (put (cadr def) 'litable-defun-end end)
+        (put (cadr def) 'litable-defun-definition
+             (buffer-substring-no-properties beg end))))))
 
 ;; TODO: add "form id" to 'litable property so we can only
 ;; clear/update specific form's overlays
-(defun litable-variable (beg end var value)
+(defun litable-variable (beg end var value defname)
   "Add litable overlay over a variable.
 
 BEG, END is the overlay range, VAR is the variable symbol and
 VALUE is its current value in the context where this function is
-called."
-  (ov beg end
+called.  DEFNAME is the name of the defun.
+"
+  (ov (+ (get defname 'litable-defun-beg) beg)
+      (+ (get defname 'litable-defun-beg) end)
       'litable t
       'face 'font-lock-type-face
       ;; TODO: add better formatter
