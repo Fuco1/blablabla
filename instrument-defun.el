@@ -78,8 +78,15 @@ DATA is the data plist."
     `(setq
       ,@(-mapcat
          (-lambda ((var def))
-           (forward-sexp)
-           (list var (litable--instrument-defun def)))
+           (forward-symbol 1)
+           (forward-symbol -1)
+           (let ((name (symbol-at-point))
+                 (beg (litable-point data))
+                 (end (progn (forward-sexp) (litable-point data))))
+             (list var `(litable-variable
+                         ,beg ,end ',name
+                         ,(litable--instrument-defun def data)
+                         ',(plist-get data :name)))))
          (-partition 2 (cdr setq-form))))))
 
 (defun litable--instrument-defun (form data)
