@@ -29,6 +29,8 @@
 (require 'dash)
 (require 'ov)
 
+(require 'edebug)
+
 (defun litable-point (data)
   "Return point relative to defun's beginning.
 
