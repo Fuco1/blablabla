@@ -57,7 +57,8 @@ DATA is the data plist."
                      (forward-symbol -1)))
                 ',var
                 ,var
-                ',(plist-get data :name))))
+                ',(plist-get data :name)
+                'font-lock-variable-name-face)))
           variables))))
 
 (defun litable-instrument-variable (variable data)
@@ -88,7 +89,8 @@ DATA is the data plist."
              (list var `(litable-variable
                          ,beg ,end ',name
                          ,(litable--instrument-defun def data)
-                         ',(plist-get data :name)))))
+                         ',(plist-get data :name)
+                         'font-lock-warning-face))))
          (-partition 2 (cdr setq-form))))))
 
 (defun litable--instrument-defun (form data)
@@ -164,17 +166,18 @@ DATA is the data plist."
 
 ;; TODO: add "form id" to 'litable property so we can only
 ;; clear/update specific form's overlays
-(defun litable-variable (beg end var value defname)
+(defun litable-variable (beg end var value defname &optional face)
   "Add litable overlay over a variable.
 
 BEG, END is the overlay range, VAR is the variable symbol and
 VALUE is its current value in the context where this function is
 called.  DEFNAME is the name of the defun.
 "
+  (setq face (or face 'font-lock-type-face))
   (ov (+ (get defname 'litable-defun-beg) beg)
       (+ (get defname 'litable-defun-beg) end)
       'litable t
-      'face 'font-lock-type-face
+      'face face
       ;; TODO: add better formatter
       'display (format "%s{%S}" (symbol-name var)
                        (cond
