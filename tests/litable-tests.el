@@ -131,6 +131,8 @@ Finally, FORMS are run."
       '(litable-variable 33 34 'a a 'bar))))
 
 
+;; TODO: add separate tests for let as well? Or only keep top-level
+;; itegration tests
 (describe "Instrument defun"
 
   (it "should instrument single let declaration"

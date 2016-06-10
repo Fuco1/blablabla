@@ -141,6 +141,9 @@ DATA is the instrumentation state."
      ((memq (car form) '(let let*))
       (prog1 (litable--instrument-let form data)
         (forward-sexp)))
+     ;; TODO: add replacement of `lambda' form arguments... at best
+     ;; reuse this code, or extract the common body into
+     ;; `litable--instrument-lambda'
      ((eq 'defun (car form))
       (down-list)
       (forward-sexp 2)
@@ -210,6 +213,8 @@ DATA is the instrumentation state."
 
 ;; TODO: add "form id" to 'litable property so we can only
 ;; clear/update specific form's overlays
+;; TODO: no overlays/replacement should happen if the litable-mode is
+;; not on
 (defun litable-variable (beg end var value defname &optional face)
   "Add litable overlay over a variable.
 
@@ -305,6 +310,8 @@ called.  DEFNAME is the name of the defun.
       (beginning-of-defun)
       (litable-instrument-defun))))
 
+;; TODO: if we turn the mode off, ideally we should un-instrument the
+;; defuns back to whatever they were before
 ;;;###autoload
 (define-minor-mode litable2-mode
   "Toggle litable2-mode"
