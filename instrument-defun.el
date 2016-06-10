@@ -31,6 +31,7 @@
 
 (require 'edebug)
 
+;; TODO: rename `data' to `state'
 (defun litable-point (data)
   "Return point relative to defun's beginning.
 
@@ -83,9 +84,13 @@ DATA is the data plist."
          (-lambda ((var def))
            (forward-symbol 1)
            (forward-symbol -1)
+           ;; TODO: name = var?
            (let ((name (symbol-at-point))
                  (beg (litable-point data))
                  (end (progn (forward-sexp) (litable-point data))))
+             ;; we need to leave the variable as first argument to
+             ;; setq, so instead we wrap the next form with the code
+             ;; to fontify the preceding variable.
              (list var `(litable-variable
                          ,beg ,end ',name
                          ,(litable--instrument-defun def data)
@@ -151,6 +156,11 @@ DATA is the instrumentation state."
                       (cddddr form)))
            (cons
             arglist
+            ;; TODO: couldn't we do without the mapcar here? Add a
+            ;; shortcut to do the unwraping or implement it
+            ;; recursively even on the first argument... such that
+            ;; ((a) (b...)) goes down to `a'. This needs to be
+            ;; implemented in the `t' branch
             (mapcar (lambda (f) (litable--instrument-defun f data))
                     (cdddr form)))))))
      (t
@@ -179,6 +189,8 @@ DATA is the instrumentation state."
 (defun litable-instrument-defun ()
   "Instrument defun after point."
   (let* ((def (sexp-at-point))
+         ;; We thread data through the instrumentation pipeline to
+         ;; carry local information about the defun, like its name
          (data (list :point (point)
                      :name (cadr def))))
     (save-excursion
