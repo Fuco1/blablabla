@@ -165,4 +165,37 @@ Finally, FORMS are run."
               (bar
                (litable-variable 29 32 'bar
                                  (litable-variable 33 34 'a a 'bar)
-                                 'bar 'font-lock-warning-face))))))))
+                                 'bar 'font-lock-warning-face)))))))
+
+  (it "should instrument an atom in the body of the let declaration"
+    (expect
+     (litable-test-with-temp-buffer "|(defun bar () (let ((foo a)) a))" nil
+       (litable--instrument-defun
+        '(defun bar () (let ((foo a)) a))
+        (list :name 'bar :point 1)))
+     :to-equal
+      '(lambda nil
+         (progn)
+         (let
+             ((foo
+               (litable-variable 21 24 'foo
+                                 (litable-variable 25 26 'a a 'bar)
+                                 'bar 'font-lock-warning-face)))
+           (litable-variable 29 30 'a a 'bar)))))
+
+  (it "should instrument a list in the body of the let declaration"
+    (expect
+     (litable-test-with-temp-buffer "|(defun bar () (let ((foo a)) (progn a)))" nil
+       (litable--instrument-defun
+        '(defun bar () (let ((foo a)) (progn a)))
+        (list :name 'bar :point 1)))
+     :to-equal
+      '(lambda nil
+         (progn)
+         (let
+             ((foo
+               (litable-variable 21 24 'foo
+                                 (litable-variable 25 26 'a a 'bar)
+                                 'bar 'font-lock-warning-face)))
+           (progn
+             (litable-variable 36 37 'a a 'bar)))))))

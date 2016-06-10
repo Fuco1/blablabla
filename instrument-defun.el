@@ -122,8 +122,10 @@ DATA is the instrumentation state."
                                'font-lock-warning-face)))
             (up-list)))
         (cadr let-form))
-      ,@(mapcar (lambda (f) (litable--instrument-defun f data))
-                (cddr let-form)))))
+      ,@(progn
+          (up-list)
+          (mapcar (lambda (f) (litable--instrument-defun f data))
+                  (cddr let-form))))))
 
 (defun litable--instrument-defun (form data)
   "FORM."
