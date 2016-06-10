@@ -190,12 +190,24 @@ called.  DEFNAME is the name of the defun.
                         (t value))))
   value)
 
+(defun litable--goto-toplevel-form ()
+  "Go to toplevel form around the point."
+  (while (/= (car (syntax-ppss)) 0) (litable--backward-up-list)))
+
+(defun litable--backward-up-list ()
+  "Like `backward-up-list' but works inside strings too."
+  (interactive)
+  (if (in-string-p)
+      (while (in-string-p)
+        (backward-char))
+    (backward-up-list)))
+
 (defun litable2-refresh (&optional a b c)
   "A B C."
   (when a
     (ignore-errors
       (let ((form (save-excursion
-                    (litable-goto-toplevel-form)
+                    (litable--goto-toplevel-form)
                     (sexp-at-point))))
         (ov-clear 'litable)
         (when (listp form)
