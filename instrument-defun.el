@@ -93,6 +93,33 @@ DATA is the data plist."
                          'font-lock-warning-face))))
          (-partition 2 (cdr setq-form))))))
 
+(defun litable--instrument-let (let-form data)
+  "Instrument a LET-FORM.
+
+DATA is the instrumentation state."
+  (save-excursion
+    (down-list 2)
+    `(,(car let-form)
+      ,(-map
+        (-lambda ((var def))
+          (down-list)
+          (forward-symbol 1)
+          (forward-symbol -1)
+          (prog1 (let ((beg (litable-point data))
+                       (end (progn (forward-sexp) (litable-point data))))
+                   ;; we need to leave the variable as first argument to let
+                   ;; ("the place"), so instead we wrap the next form with
+                   ;; the code to fontify the preceding variable.
+                   (list var `(litable-variable
+                               ,beg ,end ',var
+                               ,(litable--instrument-defun def data)
+                               ',(plist-get data :name)
+                               'font-lock-warning-face)))
+            (up-list)))
+        (cadr let-form))
+      ,@(mapcar (lambda (f) (litable--instrument-defun f data))
+                (cddr let-form)))))
+
 (defun litable--instrument-defun (form data)
   "FORM."
   (cond
@@ -103,6 +130,9 @@ DATA is the data plist."
       form)
      ((eq 'setq (car form))
       (prog1 (litable-instrument-setq form data)
+        (forward-sexp)))
+     ((memq (car form) '(let let*))
+      (prog1 (litable--instrument-let form data)
         (forward-sexp)))
      ((eq 'defun (car form))
       (down-list)

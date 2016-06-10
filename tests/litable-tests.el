@@ -129,3 +129,40 @@ Finally, FORMS are run."
        (litable-instrument-variable 'a (list :name 'bar :point 1)))
      :to-equal
       '(litable-variable 33 34 'a a 'bar))))
+
+
+(describe "Instrument defun"
+
+  (it "should instrument single let declaration"
+    (expect
+     (litable-test-with-temp-buffer "|(defun bar () (let ((foo a))))" nil
+       (litable--instrument-defun
+        '(defun bar () (let ((foo a))))
+        (list :name 'bar :point 1)))
+     :to-equal
+      '(lambda nil
+         (progn)
+         (let
+             ((foo
+               (litable-variable 21 24 'foo
+                                 (litable-variable 25 26 'a a 'bar)
+                                 'bar 'font-lock-warning-face)))))))
+
+  (it "should instrument two let declarations"
+    (expect
+     (litable-test-with-temp-buffer "|(defun bar () (let ((foo a) (bar a))))" nil
+       (litable--instrument-defun
+        '(defun bar () (let ((foo a) (bar a))))
+        (list :name 'bar :point 1)))
+     :to-equal
+      '(lambda nil
+         (progn)
+         (let
+             ((foo
+               (litable-variable 21 24 'foo
+                                 (litable-variable 25 26 'a a 'bar)
+                                 'bar 'font-lock-warning-face))
+              (bar
+               (litable-variable 29 32 'bar
+                                 (litable-variable 33 34 'a a 'bar)
+                                 'bar 'font-lock-warning-face))))))))
