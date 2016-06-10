@@ -31,6 +31,7 @@ Finally, FORMS are run."
            (delete-char -1))
          ,@forms))))
 
+
 (describe "Navigation helpers"
 
   (describe "backward-up-list"
@@ -86,6 +87,7 @@ Finally, FORMS are run."
          (litable--goto-toplevel-form)
          (point))
        :to-equal 7))))
+
 
 (describe "Defun helpers"
 
