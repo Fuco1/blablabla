@@ -98,3 +98,34 @@ Finally, FORMS are run."
        (litable-test-with-temp-buffer "(abcdef) (defun| foo () nil)" nil
          (litable-point (list :point 10)))
        :to-equal 6))))
+
+
+(describe "Instrument variable"
+
+  (it "should instrument rhs variable in setq"
+    (expect
+     (litable-test-with-temp-buffer "(defun bar () (setq x |a))" nil
+       (litable-instrument-variable 'a (list :name 'bar :point 1)))
+     :to-equal
+      '(litable-variable 22 23 'a a 'bar)))
+
+  (it "should instrument rhs variable in let"
+    (expect
+     (litable-test-with-temp-buffer "(defun bar () (let ((foo |a)) a))" nil
+       (litable-instrument-variable 'a (list :name 'bar :point 1)))
+     :to-equal
+      '(litable-variable 25 26 'a a 'bar)))
+
+  (it "should instrument variable when it stands alone"
+    (expect
+     (litable-test-with-temp-buffer "(defun bar () (let ((foo a)) |a))" nil
+       (litable-instrument-variable 'a (list :name 'bar :point 1)))
+     :to-equal
+      '(litable-variable 29 30 'a a 'bar)))
+
+  (it "should instrument variable when it is used inside a form"
+    (expect
+     (litable-test-with-temp-buffer "(defun bar () (let ((foo a)) (1+ |a)))" nil
+       (litable-instrument-variable 'a (list :name 'bar :point 1)))
+     :to-equal
+      '(litable-variable 33 34 'a a 'bar))))
