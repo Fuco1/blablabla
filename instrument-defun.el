@@ -246,8 +246,8 @@ called.  DEFNAME is the name of the defun.
 (defun litable--backward-up-list ()
   "Like `backward-up-list' but works inside strings too."
   (interactive)
-  (if (in-string-p)
-      (while (in-string-p)
+  (if (nth 3 (syntax-ppss))
+      (while (nth 3 (syntax-ppss))
         (backward-char))
     (backward-up-list)))
 

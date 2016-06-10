@@ -50,6 +50,15 @@ Finally, FORMS are run."
          (point))
        :to-equal 1))
 
+    ;; fixes https://github.com/Fuco1/litable/issues/17
+    (it "should jump up a string even if it contains ^(defun)"
+      (expect
+       (litable-test-with-temp-buffer "\"foo
+(defun| bar)\"" nil
+         (litable--backward-up-list)
+         (point))
+       :to-equal 1))
+
     (it "should work twice in a row"
       (expect
        (litable-test-with-temp-buffer "(asd ad \"foo| bar\")" nil
