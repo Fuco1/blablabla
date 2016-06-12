@@ -122,8 +122,15 @@ DATA is the instrumentation state."
         (cadr let-form))
       ,@(progn
           (up-list)
-          (mapcar (lambda (f) (litable--instrument-defun f data))
-                  (cddr let-form))))))
+          (litable--instrument-form-body (cddr let-form) data)))))
+
+(defun litable--instrument-form-body (form data)
+  "Instrument a FORM's body.
+
+FORM is a list of forms and we instrument each child form recursively.
+
+DATA is the instrumentation state."
+  (mapcar (lambda (f) (litable--instrument-defun f data)) form))
 
 (defun litable--instrument-function (form data)
   "Instrument a lambda FORM.
@@ -149,8 +156,7 @@ DATA is the instrumentation state."
             arglist
             (progn
               (forward-sexp) ;; skip over the docstring
-              (mapcar (lambda (f) (litable--instrument-defun f data))
-                      (cdddr form))))
+              (litable--instrument-form-body (cdddr form) data)))
          (cons
           arglist
           ;; TODO: couldn't we do without the mapcar here? Add a
@@ -158,8 +164,7 @@ DATA is the instrumentation state."
           ;; recursively even on the first argument... such that
           ;; ((a) (b...)) goes down to `a'. This needs to be
           ;; implemented in the `t' branch
-          (mapcar (lambda (f) (litable--instrument-defun f data))
-                  (cddr form))))))))
+          (litable--instrument-form-body (cddr form) data)))))))
 
 (defun litable--instrument-defun (form data)
   "FORM."
@@ -186,7 +191,7 @@ DATA is the instrumentation state."
       (forward-sexp)
       (prog1 (cons
               (car form)
-              (mapcar (lambda (f) (litable--instrument-defun f data)) (cdr form)))
+              (litable--instrument-form-body (cdr form) data))
         (up-list)))))
    ((or (stringp form)
         (vectorp form)
