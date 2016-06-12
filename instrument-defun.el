@@ -137,17 +137,20 @@ DATA is the instrumentation state."
     (down-list)
     (forward-sexp (if (eq (car form) 'defun) 2 1))
     (let ((arglist (litable-instrument-arglist (cadr form) data)))
-      (forward-sexp 1)
+      (forward-sexp 1) ;; skip over the arg list
       (-cons*
        'lambda
        (cadr form)
-       ;; we need to put the form after the optional docstring
+       ;; we need to put the instrumented arglist form after the
+       ;; optional docstring
        (if (stringp (caddr form))
            (-cons*
             (caddr form)
             arglist
-            (mapcar (lambda (f) (litable--instrument-defun f data))
-                    (cdddr form)))
+            (progn
+              (forward-sexp) ;; skip over the docstring
+              (mapcar (lambda (f) (litable--instrument-defun f data))
+                      (cdddr form))))
          (cons
           arglist
           ;; TODO: couldn't we do without the mapcar here? Add a

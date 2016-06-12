@@ -220,19 +220,34 @@ Finally, FORMS are run."
            (litable-variable 11 12 'b b 'foo 'font-lock-variable-name-face))
          (litable-variable 14 15 'b b 'foo))))
 
-  (it "should handle the docstring"
+  (it "should handle put the instrumented arglist form after the docstring"
     (expect
-     (litable-test-with-temp-buffer "|(lambda () \"abcd\" t)" nil
-       (litable--instrument-function '(lambda () "abcd" t) (list :name 'bar :point 1)))
+     (litable-test-with-temp-buffer "|(lambda (a) \"doc\" t)" nil
+       (litable--instrument-function '(lambda (a) "doc" t) (list :name 'foo :point 1)))
      :to-equal
-      '(lambda nil "abcd" (progn) t)))
+      '(lambda (a) "doc"
+         (progn
+           (litable-variable 9 10 'a a 'foo 'font-lock-variable-name-face)) t)))
 
-  (it "should handle the docstring in a defun"
+  (it "should handle put the instrumented arglist form after the docstring in a defun"
     (expect
-     (litable-test-with-temp-buffer "|(defun bar () \"abcd\" t)" nil
-       (litable--instrument-function '(defun bar () "abcd" t) (list :name 'bar :point 1)))
+     (litable-test-with-temp-buffer "|(defun foo (a) \"doc\" t)" nil
+       (litable--instrument-function '(defun foo (a) "doc" t) (list :name 'foo :point 1)))
      :to-equal
-      '(lambda nil "abcd" (progn) t))))
+      '(lambda (a) "doc"
+         (progn
+           (litable-variable 12 13 'a a 'foo 'font-lock-variable-name-face)) t)))
+
+  (it "should skip the docstring before instrumenting the body"
+    (expect
+     (litable-test-with-temp-buffer "|(defun foo (a) \"doc\" nil a)" nil
+       (litable--instrument-function '(defun foo (a) "doc" nil a) (list :name 'foo :point 1)))
+     :to-equal
+      '(lambda (a) "doc"
+         (progn
+           (litable-variable 12 13 'a a 'foo 'font-lock-variable-name-face))
+         nil
+         (litable-variable 25 26 'a a 'foo)))))
 
 
 ;; TODO: add separate tests for let as well? Or only keep top-level
