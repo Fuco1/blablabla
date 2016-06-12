@@ -139,6 +139,71 @@ Finally, FORMS are run."
      :to-equal
       '(litable-variable 33 34 'a a 'bar))))
 
+(describe "Instrument setq"
+
+  (it "should instrument setq with single variable"
+    (expect
+     (litable-test-with-temp-buffer "(defun bar () |(setq x a))" nil
+       (litable-instrument-setq '(setq x a) (list :name 'bar :point 1)))
+     :to-equal
+      '(setq x
+             (litable-variable 20 21 'x
+                               (litable-variable 22 23 'a a 'bar)
+                               'bar 'font-lock-warning-face))))
+
+  (it "should instrument with single variable and complex expression"
+    (expect
+     (litable-test-with-temp-buffer "(defun bar () |(setq x (progn (foo))))" nil
+       (litable-instrument-setq '(setq x (progn (foo))) (list :name 'bar :point 1)))
+     :to-equal
+      '(setq x
+             (litable-variable 20 21 'x
+                               (progn
+                                 (foo))
+                               'bar 'font-lock-warning-face))))
+
+  (it "should instrument with single variable and complex expression involving a variable"
+    (expect
+     (litable-test-with-temp-buffer "(defun bar () |(setq x (progn (foo a))))" nil
+       (litable-instrument-setq '(setq x (progn (foo a))) (list :name 'bar :point 1)))
+     :to-equal
+      '(setq x
+             (litable-variable 20 21 'x
+                               (progn
+                                 (foo
+                                  (litable-variable 34 35 'a a 'bar)))
+                               'bar 'font-lock-warning-face))))
+
+  (it "should instrument lhs and rhs of setq with multiple variables"
+    (expect
+     (litable-test-with-temp-buffer "(defun bar () |(setq x a y b))" nil
+       (litable-instrument-setq '(setq x a y b) (list :name 'bar :point 1)))
+     :to-equal
+      '(setq x
+             (litable-variable 20 21 'x
+                               (litable-variable 22 23 'a a 'bar)
+                               'bar 'font-lock-warning-face)
+             y
+             (litable-variable 24 25 'y
+                               (litable-variable 26 27 'b b 'bar)
+                               'bar 'font-lock-warning-face))))
+
+  (it "should instrument lhs and rhs of setq with multiple variables with complex expressions"
+    (expect
+     (litable-test-with-temp-buffer "(defun bar () |(setq x (+ (foo) (bar)) y (apply '+ list)))" nil
+       (litable-instrument-setq '(setq x (+ (foo) (bar)) y (apply '+ list)) (list :name 'bar :point 1)))
+     :to-equal
+      '(setq x
+             (litable-variable 20 21 'x
+                               (+
+                                (foo)
+                                (bar))
+                               'bar 'font-lock-warning-face)
+             y
+             (litable-variable 38 39 'y
+                               (apply '+
+                                      (litable-variable 50 54 'list list 'bar))
+                               'bar 'font-lock-warning-face)))))
 
 ;; TODO: add separate tests for let as well? Or only keep top-level
 ;; itegration tests
