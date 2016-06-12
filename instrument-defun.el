@@ -249,6 +249,26 @@ called.  DEFNAME is the name of the defun.
                         (t value))))
   value)
 
+(defun litable-result (form &optional face)
+  (setq face (or face 'font-lock-keyword-face))
+  (let* ((beg (save-excursion
+                (end-of-defun)
+                (backward-char)
+                (point)))
+         (end beg)
+         (is-error nil)
+         (value (condition-case err
+                    (eval form)
+                  (error (progn
+                           (setq is-error t)
+                           (error-message-string err))))))
+    (ov beg end
+        'litable t
+        'before-string (propertize
+                        (format " => %s" value)
+                        'face (if is-error 'font-lock-warning-face face)))
+    value))
+
 (defun litable--goto-toplevel-form ()
   "Go to toplevel form around the point."
   (while (/= (car (syntax-ppss)) 0) (litable--backward-up-list)))
@@ -289,7 +309,7 @@ called.  DEFNAME is the name of the defun.
                   (litable-instrument-defun)))
               (end-of-defun)))
           (unless (memq (car form) '(defun defmacro cl-defun cl-defmacro))
-            (eval form)))))))
+            (litable-result form)))))))
 
 (defun litable2-init ()
   "Initialize litable in the buffer."
