@@ -269,7 +269,7 @@ called.  DEFNAME is the name of the defun.
                     (litable--goto-toplevel-form)
                     (sexp-at-point))))
         (ov-clear 'litable)
-        (when (listp form)
+        (when (and form (listp form))
           ;; re-instrument all defuns which have changed
           (save-excursion
             (goto-char (point-min))
