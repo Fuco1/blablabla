@@ -84,15 +84,13 @@ DATA is the data plist."
          (-lambda ((var def))
            (forward-symbol 1)
            (forward-symbol -1)
-           ;; TODO: name = var?
-           (let ((name (symbol-at-point))
-                 (beg (litable-point data))
+           (let ((beg (litable-point data))
                  (end (progn (forward-sexp) (litable-point data))))
              ;; we need to leave the variable as first argument to
              ;; setq, so instead we wrap the next form with the code
              ;; to fontify the preceding variable.
              (list var `(litable-variable
-                         ,beg ,end ',name
+                         ,beg ,end ',var
                          ,(litable--instrument-defun def data)
                          ',(plist-get data :name)
                          'font-lock-warning-face))))
