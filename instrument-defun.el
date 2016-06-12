@@ -125,6 +125,39 @@ DATA is the instrumentation state."
           (mapcar (lambda (f) (litable--instrument-defun f data))
                   (cddr let-form))))))
 
+(defun litable--instrument-function (form data)
+  "Instrument a lambda FORM.
+
+FORM can either contain a `lambda' or a `defun'.
+
+DATA is the instrumentation state."
+  (when (eq (car form) 'defun)
+    (setq form (cons (car form) (cddr form))))
+  (save-excursion
+    (down-list)
+    (forward-sexp (if (eq (car form) 'defun) 2 1))
+    (let ((arglist (litable-instrument-arglist (cadr form) data)))
+      (forward-sexp 1)
+      (-cons*
+       'lambda
+       (cadr form)
+       ;; we need to put the form after the optional docstring
+       (if (stringp (caddr form))
+           (-cons*
+            (caddr form)
+            arglist
+            (mapcar (lambda (f) (litable--instrument-defun f data))
+                    (cdddr form)))
+         (cons
+          arglist
+          ;; TODO: couldn't we do without the mapcar here? Add a
+          ;; shortcut to do the unwraping or implement it
+          ;; recursively even on the first argument... such that
+          ;; ((a) (b...)) goes down to `a'. This needs to be
+          ;; implemented in the `t' branch
+          (mapcar (lambda (f) (litable--instrument-defun f data))
+                  (cddr form))))))))
+
 (defun litable--instrument-defun (form data)
   "FORM."
   (cond
@@ -142,30 +175,9 @@ DATA is the instrumentation state."
      ;; TODO: add replacement of `lambda' form arguments... at best
      ;; reuse this code, or extract the common body into
      ;; `litable--instrument-lambda'
-     ((eq 'defun (car form))
-      (down-list)
-      (forward-sexp 2)
-      (let ((arglist (litable-instrument-arglist (caddr form) data)))
-        (forward-sexp 1)
-        (-cons*
-         'lambda
-         (caddr form)
-         ;; we need to put the form after the optional docstring
-         (if (stringp (cadddr form))
-             (-cons*
-              (cadddr form)
-              arglist
-              (mapcar (lambda (f) (litable--instrument-defun f data))
-                      (cddddr form)))
-           (cons
-            arglist
-            ;; TODO: couldn't we do without the mapcar here? Add a
-            ;; shortcut to do the unwraping or implement it
-            ;; recursively even on the first argument... such that
-            ;; ((a) (b...)) goes down to `a'. This needs to be
-            ;; implemented in the `t' branch
-            (mapcar (lambda (f) (litable--instrument-defun f data))
-                    (cdddr form)))))))
+     ((memq (car form) '(lambda defun))
+      (prog1 (litable--instrument-function form data)
+        (forward-sexp)))
      (t
       (down-list)
       (forward-sexp)

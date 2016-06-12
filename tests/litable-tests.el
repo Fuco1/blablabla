@@ -205,6 +205,36 @@ Finally, FORMS are run."
                                       (litable-variable 50 54 'list list 'bar))
                                'bar 'font-lock-warning-face)))))
 
+
+(describe "Instrument function"
+
+  (it "should instrument the argument list"
+    (expect
+     (litable-test-with-temp-buffer "|(lambda (a b) b)" nil
+       (litable--instrument-function '(lambda (a b) b) (list :name 'foo :point 1)))
+     :to-equal
+      '(lambda
+         (a b)
+         (progn
+           (litable-variable 9 10 'a a 'foo 'font-lock-variable-name-face)
+           (litable-variable 11 12 'b b 'foo 'font-lock-variable-name-face))
+         (litable-variable 14 15 'b b 'foo))))
+
+  (it "should handle the docstring"
+    (expect
+     (litable-test-with-temp-buffer "|(lambda () \"abcd\" t)" nil
+       (litable--instrument-function '(lambda () "abcd" t) (list :name 'bar :point 1)))
+     :to-equal
+      '(lambda nil "abcd" (progn) t)))
+
+  (it "should handle the docstring in a defun"
+    (expect
+     (litable-test-with-temp-buffer "|(defun bar () \"abcd\" t)" nil
+       (litable--instrument-function '(defun bar () "abcd" t) (list :name 'bar :point 1)))
+     :to-equal
+      '(lambda nil "abcd" (progn) t))))
+
+
 ;; TODO: add separate tests for let as well? Or only keep top-level
 ;; itegration tests
 (describe "Instrument defun"
@@ -274,4 +304,63 @@ Finally, FORMS are run."
                                  (litable-variable 25 26 'a a 'bar)
                                  'bar 'font-lock-warning-face)))
            (progn
-             (litable-variable 36 37 'a a 'bar)))))))
+             (litable-variable 36 37 'a a 'bar))))))
+
+  (it "should instrument complex expression containing setq, let, quotes, conditionals and closures"
+    (expect
+     (litable-test-with-temp-buffer "|(defun my-foo (a &optional b)
+  \"Docstring\"
+  (let* ((foo \"asd\")
+         (baz (let ((b b)) (lambda (x) (+ x b)))))
+    (if (and a b)
+        (apply '+ (list b))
+      (apply '+ (if a 1 2) (list 1)))
+    (setq b 5)
+    (funcall baz 2)))" nil
+    (goto-char (point-min))
+    (litable--instrument-defun
+     (save-excursion (read (current-buffer)))
+     (list :name 'my-foo :point 1)))
+     :to-equal
+      '(lambda
+         (a &optional b)
+         "Docstring"
+         (progn
+           (litable-variable 15 16 'a a 'my-foo 'font-lock-variable-name-face)
+           nil
+           (litable-variable 27 28 'b b 'my-foo 'font-lock-variable-name-face))
+         (let*
+             ((foo
+               (litable-variable 54 57 'foo "asd" 'my-foo 'font-lock-warning-face))
+              (baz
+               (litable-variable 75 78 'baz
+                                 (let
+                                     ((b
+                                       (litable-variable 86 87 'b
+                                                         (litable-variable 88 89 'b b 'my-foo)
+                                                         'my-foo 'font-lock-warning-face)))
+                                   (lambda
+                                     (x)
+                                     (progn
+                                       (litable-variable 101 102 'x x 'my-foo 'font-lock-variable-name-face))
+                                     (+
+                                      (litable-variable 107 108 'x x 'my-foo)
+                                      (litable-variable 109 110 'b b 'my-foo))))
+                                 'my-foo 'font-lock-warning-face)))
+           (if
+               (and
+                (litable-variable 129 130 'a a 'my-foo)
+                (litable-variable 131 132 'b b 'my-foo))
+               (apply '+
+                      (list
+                       (litable-variable 158 159 'b b 'my-foo)))
+             (apply '+
+                    (if
+                        (litable-variable 182 183 'a a 'my-foo)
+                        1 2)
+                    (list 1)))
+           (setq b
+                 (litable-variable 210 211 'b 5 'my-foo 'font-lock-warning-face))
+           (funcall
+            (litable-variable 228 231 'baz baz 'my-foo)
+            2))))))
