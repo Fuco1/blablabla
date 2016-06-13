@@ -39,7 +39,9 @@ DATA is the data plist."
   (- (point) (plist-get data :point)))
 
 (defun litable-instrument-arglist (variables data)
-  "Instrument arglist with VARIABLES."
+  "Instrument arglist with VARIABLES.
+
+DATA is the instrumentation state."
   (save-excursion
     (down-list)
     `(progn
@@ -63,7 +65,9 @@ DATA is the data plist."
           variables))))
 
 (defun litable-instrument-variable (variable data)
-  "Instrument a single VARIABLE."
+  "Instrument a single VARIABLE.
+
+DATA is the instrumentation state."
   (save-excursion
     `(litable-variable
       ,(litable-point data)
@@ -75,7 +79,9 @@ DATA is the data plist."
       ',(plist-get data :name))))
 
 (defun litable-instrument-setq (setq-form data)
-  "Instrument a SETQ-FORM."
+  "Instrument a SETQ-FORM.
+
+DATA is the instrumentation state."
   (save-excursion
     (down-list)
     (forward-sexp)
