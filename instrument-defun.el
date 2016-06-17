@@ -169,6 +169,35 @@ DATA is the instrumentation state."
          ,arglist
          ,@(litable--instrument-form-body form data)))))
 
+(defun litable--wrap-function-result (form data)
+  "Wrap FORM with `litable-result'.
+
+FORM is a lambda expression.
+
+DATA is the instrumentation state."
+  (let* ((form (cdr form))
+         (err (make-symbol "err"))
+         (p (litable-point data))
+         (name (plist-get data :name))
+         (args (pop form))
+         (front-matter nil))
+    (when (stringp (car form))
+      (push (pop form) front-matter))
+    (when (and (consp (car form))
+               (eq (caar form) 'interactive))
+      (push (pop form) front-matter))
+    `(lambda
+       ,args
+       ,@front-matter
+       (condition-case ,err
+           (litable-result
+            (progn
+              ,@form)
+            nil ,p ',name)
+         (error (litable-error
+                 (error-message-string ,err) nil ,p ',name)
+                (signal (car ,err) (cdr ,err)))))))
+
 (defun litable--instrument-form (form data)
   "FORM."
   (cond
@@ -192,8 +221,9 @@ DATA is the instrumentation state."
       (prog1 (litable--instrument-let form data)
         (forward-sexp)))
      ((memq (car form) '(lambda defun))
-      (prog1 (litable--instrument-function form data)
-        (forward-sexp)))
+      (let ((function-form (litable--instrument-function form data)))
+        (forward-sexp)
+        (litable--wrap-function-result function-form data)))
      (t
       (down-list)
       (forward-sexp)
@@ -224,18 +254,6 @@ DATA is the instrumentation state."
                      :name (cadr def))))
     (save-excursion
       (fset (cadr def)
-            ;; TODO: put this somewhere around function body, but only
-            ;; after it was instrumented, this is only the last step
-            ;; (let ((err (make-symbol "err")))
-            ;;   `((condition-case ,err
-            ;;         (litable-result
-            ;;          (progn
-            ;;            ,@(mapcar (lambda (f) (litable--instrument-form f data)) form))
-            ;;          nil ,(1+ (litable-point data)) ',(plist-get data :name))
-            ;;       (error (litable-error
-            ;;               (error-message-string ,err)
-            ;;               nil ,(1+ (litable-point data)) ',(plist-get data :name))
-            ;;              (signal (car ,err) (cdr ,err))))))
             (eval (litable--instrument-form def data) lexical-binding)))
     (save-excursion
       (let ((beg (point))
