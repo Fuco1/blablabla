@@ -247,7 +247,34 @@ Finally, FORMS are run."
          (progn
            (litable-variable 12 13 'a a 'foo 'font-lock-variable-name-face))
          nil
-         (litable-variable 25 26 'a a 'foo)))))
+         (litable-variable 25 26 'a a 'foo))))
+
+  (it "should skip the interactive form before instrumenting the body"
+    (expect
+     (litable-test-with-temp-buffer "|(defun foo (a) (interactive \"P\") nil a)" nil
+       (litable--instrument-function '(defun foo (a) (interactive "P") nil a)
+                                     (list :name 'foo :point 1)))
+     :to-equal
+      '(lambda (a)
+         (interactive "P")
+         (progn
+           (litable-variable 12 13 'a a 'foo 'font-lock-variable-name-face))
+         nil
+         (litable-variable 37 38 'a a 'foo))))
+
+  (it "should skip the docstring and interactive form before instrumenting the body"
+    (expect
+     (litable-test-with-temp-buffer "|(defun foo (a) \"doc\" (interactive \"P\") nil a)" nil
+       (litable--instrument-function '(defun foo (a) "doc" (interactive "P") nil a)
+                                     (list :name 'foo :point 1)))
+     :to-equal
+      '(lambda (a)
+         "doc"
+         (interactive "P")
+         (progn
+           (litable-variable 12 13 'a a 'foo 'font-lock-variable-name-face))
+         nil
+         (litable-variable 43 44 'a a 'foo)))))
 
 
 (describe "Instrument let"

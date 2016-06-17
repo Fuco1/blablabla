@@ -149,23 +149,25 @@ DATA is the instrumentation state."
   (save-excursion
     (down-list)
     (forward-sexp (if (eq (car form) 'defun) 2 1))
-    (let ((arglist (litable-instrument-arglist (cadr form) data)))
-      (forward-sexp 1) ;; skip over the arg list
-      (-cons*
-       'lambda
-       (cadr form)
-       ;; we need to put the instrumented arglist form after the
-       ;; optional docstring
-       (if (stringp (caddr form))
-           (-cons*
-            (caddr form)
-            arglist
-            (progn
-              (forward-sexp) ;; skip over the docstring
-              (litable--instrument-form-body (cdddr form) data)))
-         (cons
-          arglist
-          (litable--instrument-form-body (cddr form) data)))))))
+    (let ((arglist-raw (cadr form))
+          (arglist (litable-instrument-arglist (cadr form) data))
+          (front-matter nil))
+      (forward-sexp) ;; skip arglist
+      (setq form (cddr form)) ;; drop lambda/defun and arglist
+      ;; skip docstring
+      (when (stringp (car form))
+        (forward-sexp)
+        (push (pop form) front-matter))
+      ;; skip interactive spec
+      (when (and (consp (car form))
+                 (eq (caar form) 'interactive))
+        (forward-sexp)
+        (push (pop form) front-matter))
+      `(lambda
+         ,arglist-raw
+         ,@(nreverse front-matter)
+         ,arglist
+         ,@(litable--instrument-form-body form data)))))
 
 (defun litable--instrument-form (form data)
   "FORM."
