@@ -250,76 +250,68 @@ Finally, FORMS are run."
          (litable-variable 25 26 'a a 'foo)))))
 
 
-;; TODO: add separate tests for let as well? Or only keep top-level
-;; itegration tests
-(describe "Instrument form"
+(describe "Instrument let"
 
   (it "should instrument single let declaration"
     (expect
-     (litable-test-with-temp-buffer "|(defun bar () (let ((foo a))))" nil
-       (litable--instrument-form
-        '(defun bar () (let ((foo a))))
+     (litable-test-with-temp-buffer "|(let ((foo a)))" nil
+       (litable--instrument-let
+        '(let ((foo a)))
         (list :name 'bar :point 1)))
      :to-equal
-      '(lambda nil
-         (progn)
-         (let
-             ((foo
-               (litable-variable 21 24 'foo
-                                 (litable-variable 25 26 'a a 'bar)
-                                 'bar 'font-lock-warning-face)))))))
+      '(let
+           ((foo
+             (litable-variable 7 10 'foo
+                               (litable-variable 11 12 'a a 'bar)
+                               'bar 'font-lock-warning-face))))))
 
   (it "should instrument two let declarations"
     (expect
-     (litable-test-with-temp-buffer "|(defun bar () (let ((foo a) (bar a))))" nil
+     (litable-test-with-temp-buffer "|(let ((foo a) (bar a)))" nil
        (litable--instrument-form
-        '(defun bar () (let ((foo a) (bar a))))
+        '(let ((foo a) (bar a)))
         (list :name 'bar :point 1)))
      :to-equal
-      '(lambda nil
-         (progn)
-         (let
-             ((foo
-               (litable-variable 21 24 'foo
-                                 (litable-variable 25 26 'a a 'bar)
-                                 'bar 'font-lock-warning-face))
-              (bar
-               (litable-variable 29 32 'bar
-                                 (litable-variable 33 34 'a a 'bar)
-                                 'bar 'font-lock-warning-face)))))))
+      '(let
+           ((foo
+             (litable-variable 7 10 'foo
+                               (litable-variable 11 12 'a a 'bar)
+                               'bar 'font-lock-warning-face))
+            (bar
+             (litable-variable 15 18 'bar
+                               (litable-variable 19 20 'a a 'bar)
+                               'bar 'font-lock-warning-face))))))
 
   (it "should instrument an atom in the body of the let declaration"
     (expect
-     (litable-test-with-temp-buffer "|(defun bar () (let ((foo a)) a))" nil
+     (litable-test-with-temp-buffer "|(let ((foo a)) a)" nil
        (litable--instrument-form
-        '(defun bar () (let ((foo a)) a))
+        '(let ((foo a)) a)
         (list :name 'bar :point 1)))
      :to-equal
-      '(lambda nil
-         (progn)
-         (let
-             ((foo
-               (litable-variable 21 24 'foo
-                                 (litable-variable 25 26 'a a 'bar)
-                                 'bar 'font-lock-warning-face)))
-           (litable-variable 29 30 'a a 'bar)))))
+      '(let
+           ((foo
+             (litable-variable 7 10 'foo
+                               (litable-variable 11 12 'a a 'bar)
+                               'bar 'font-lock-warning-face)))
+         (litable-variable 15 16 'a a 'bar))))
 
   (it "should instrument a list in the body of the let declaration"
     (expect
-     (litable-test-with-temp-buffer "|(defun bar () (let ((foo a)) (progn a)))" nil
+     (litable-test-with-temp-buffer "|(let ((foo a)) (progn a))" nil
        (litable--instrument-form
-        '(defun bar () (let ((foo a)) (progn a)))
+        '(let ((foo a)) (progn a))
         (list :name 'bar :point 1)))
      :to-equal
-      '(lambda nil
-         (progn)
-         (let
-             ((foo
-               (litable-variable 21 24 'foo
-                                 (litable-variable 25 26 'a a 'bar)
-                                 'bar 'font-lock-warning-face)))
-           (progn
-             (litable-variable 36 37 'a a 'bar))))))
+      '(let
+           ((foo
+             (litable-variable 7 10 'foo
+                               (litable-variable 11 12 'a a 'bar)
+                               'bar 'font-lock-warning-face)))
+         (progn
+           (litable-variable 22 23 'a a 'bar))))))
+
+(describe "Instrument form"
 
   (it "should instrument complex expression containing setq, let, quotes, conditionals and closures"
     (expect
