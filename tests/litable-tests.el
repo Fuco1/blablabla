@@ -252,12 +252,12 @@ Finally, FORMS are run."
 
 ;; TODO: add separate tests for let as well? Or only keep top-level
 ;; itegration tests
-(describe "Instrument defun"
+(describe "Instrument form"
 
   (it "should instrument single let declaration"
     (expect
      (litable-test-with-temp-buffer "|(defun bar () (let ((foo a))))" nil
-       (litable--instrument-defun
+       (litable--instrument-form
         '(defun bar () (let ((foo a))))
         (list :name 'bar :point 1)))
      :to-equal
@@ -272,7 +272,7 @@ Finally, FORMS are run."
   (it "should instrument two let declarations"
     (expect
      (litable-test-with-temp-buffer "|(defun bar () (let ((foo a) (bar a))))" nil
-       (litable--instrument-defun
+       (litable--instrument-form
         '(defun bar () (let ((foo a) (bar a))))
         (list :name 'bar :point 1)))
      :to-equal
@@ -291,7 +291,7 @@ Finally, FORMS are run."
   (it "should instrument an atom in the body of the let declaration"
     (expect
      (litable-test-with-temp-buffer "|(defun bar () (let ((foo a)) a))" nil
-       (litable--instrument-defun
+       (litable--instrument-form
         '(defun bar () (let ((foo a)) a))
         (list :name 'bar :point 1)))
      :to-equal
@@ -307,7 +307,7 @@ Finally, FORMS are run."
   (it "should instrument a list in the body of the let declaration"
     (expect
      (litable-test-with-temp-buffer "|(defun bar () (let ((foo a)) (progn a)))" nil
-       (litable--instrument-defun
+       (litable--instrument-form
         '(defun bar () (let ((foo a)) (progn a)))
         (list :name 'bar :point 1)))
      :to-equal
@@ -333,7 +333,7 @@ Finally, FORMS are run."
     (setq b 5)
     (funcall baz 2)))" nil
     (goto-char (point-min))
-    (litable--instrument-defun
+    (litable--instrument-form
      (save-excursion (read (current-buffer)))
      (list :name 'my-foo :point 1)))
      :to-equal

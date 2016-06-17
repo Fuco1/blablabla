@@ -97,7 +97,7 @@ DATA is the instrumentation state."
              ;; to fontify the preceding variable.
              (list var `(litable-variable
                          ,beg ,end ',var
-                         ,(litable--instrument-defun def data)
+                         ,(litable--instrument-form def data)
                          ',(plist-get data :name)
                          'font-lock-warning-face))))
          (-partition 2 (cdr setq-form))))))
@@ -121,7 +121,7 @@ DATA is the instrumentation state."
                    ;; the code to fontify the preceding variable.
                    (list var `(litable-variable
                                ,beg ,end ',var
-                               ,(litable--instrument-defun def data)
+                               ,(litable--instrument-form def data)
                                ',(plist-get data :name)
                                'font-lock-warning-face)))
             (up-list)))
@@ -136,7 +136,7 @@ DATA is the instrumentation state."
 FORM is a list of forms and we instrument each child form recursively.
 
 DATA is the instrumentation state."
-  (mapcar (lambda (f) (litable--instrument-defun f data)) form))
+  (mapcar (lambda (f) (litable--instrument-form f data)) form))
 
 (defun litable--instrument-function (form data)
   "Instrument a lambda FORM.
@@ -172,7 +172,7 @@ DATA is the instrumentation state."
           ;; implemented in the `t' branch
           (litable--instrument-form-body (cddr form) data)))))))
 
-(defun litable--instrument-defun (form data)
+(defun litable--instrument-form (form data)
   "FORM."
   (cond
    ((consp form)
@@ -180,6 +180,14 @@ DATA is the instrumentation state."
      ((eq 'quote (car form))
       (forward-sexp)
       form)
+     ((eq 'condition-case (car form))
+      (down-list)
+      (forward-sexp 2)
+      (prog1 (-cons*
+              (car form)
+              (cadr form)
+              (litable--instrument-form-body (cddr form) data))
+        (up-list)))
      ((eq 'setq (car form))
       (prog1 (litable-instrument-setq form data)
         (forward-sexp)))
@@ -224,7 +232,19 @@ DATA is the instrumentation state."
                      :name (cadr def))))
     (save-excursion
       (fset (cadr def)
-            (eval (litable--instrument-defun def data) lexical-binding)))
+            ;; TODO: put this somewhere around function body, but only
+            ;; after it was instrumented, this is only the last step
+            ;; (let ((err (make-symbol "err")))
+            ;;   `((condition-case ,err
+            ;;         (litable-result
+            ;;          (progn
+            ;;            ,@(mapcar (lambda (f) (litable--instrument-form f data)) form))
+            ;;          nil ,(1+ (litable-point data)) ',(plist-get data :name))
+            ;;       (error (litable-error
+            ;;               (error-message-string ,err)
+            ;;               nil ,(1+ (litable-point data)) ',(plist-get data :name))
+            ;;              (signal (car ,err) (cdr ,err))))))
+            (eval (litable--instrument-form def data) lexical-binding)))
     (save-excursion
       (let ((beg (point))
             (end (progn
@@ -263,25 +283,40 @@ called.  DEFNAME is the name of the defun.
                         (t value))))
   value)
 
-(defun litable-result (form &optional face)
-  (setq face (or face 'font-lock-keyword-face))
-  (let* ((beg (save-excursion
+;; TODO: `litable-result' and `litable-error' are exactly the same
+;; except the face and format string => remove the duplication?
+(defun litable-result (value &optional face beg defname)
+  "Print VALUE in FACE as a result after the current form.
+
+If BEG and DEFNAME are set, print the value after the function."
+  (setq face (or face 'font-lock-keyword-face)
+        beg (if beg
+                (+ (get defname 'litable-defun-beg) beg)
+              (save-excursion
                 (end-of-defun)
                 (backward-char)
-                (point)))
-         (end beg)
-         (is-error nil)
-         (value (condition-case err
-                    (eval form)
-                  (error (progn
-                           (setq is-error t)
-                           (error-message-string err))))))
-    (ov beg end
-        'litable t
-        'before-string (propertize
-                        (format " => %s" value)
-                        'face (if is-error 'font-lock-warning-face face)))
-    value))
+                (point))))
+  (ov beg beg
+      'litable t
+      'before-string (propertize
+                      (format " => %S" value)
+                      'face face))
+  value)
+
+(defun litable-error (error-message &optional face beg defname)
+  (setq face (or face 'font-lock-warning-face)
+        beg (if beg
+                (+ (get defname 'litable-defun-beg) beg)
+              (save-excursion
+                (end-of-defun)
+                (backward-char)
+                (point))))
+  (ov beg beg
+      'litable t
+      'before-string (propertize
+                      (format " => %s" error-message)
+                      'face face))
+  error-message)
 
 (defun litable--goto-toplevel-form ()
   "Go to toplevel form around the point."
@@ -323,7 +358,9 @@ called.  DEFNAME is the name of the defun.
                   (litable-instrument-defun)))
               (end-of-defun)))
           (unless (memq (car form) '(defun defmacro cl-defun cl-defmacro))
-            (litable-result form)))))))
+            (condition-case err
+                (litable-result (eval form))
+              (error (litable-error (error-message-string err))))))))))
 
 (defun litable2-init ()
   "Initialize litable in the buffer."
