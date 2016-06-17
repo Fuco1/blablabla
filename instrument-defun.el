@@ -227,9 +227,9 @@ DATA is the instrumentation state."
      (t
       (down-list)
       (forward-sexp)
-      (prog1 (cons
-              (car form)
-              (litable--instrument-form-body (cdr form) data))
+      (prog1 (if (macrop (car form))
+                 form
+               (cons (car form) (litable--instrument-form-body (cdr form) data)))
         (up-list)))))
    ((or (stringp form)
         (vectorp form)
