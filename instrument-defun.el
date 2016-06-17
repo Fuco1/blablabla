@@ -320,7 +320,7 @@ If BEG and DEFNAME are set, print the value after the function."
         (backward-char))
     (backward-up-list)))
 
-(defun litable2-refresh (&optional a b c)
+(defun litable-refresh (&optional a b c)
   "A B C."
   (when a
     (ignore-errors
@@ -352,26 +352,26 @@ If BEG and DEFNAME are set, print the value after the function."
                 (litable-result (eval form))
               (error (litable-error (error-message-string err))))))))))
 
-(defun litable2-init ()
+(defun litable-init ()
   "Initialize litable in the buffer."
-  (add-hook 'after-change-functions 'litable2-refresh nil t)
-  ;; (add-hook 'post-command-hook 'litable-update-defs-if-moved nil t)
-  )
+  (add-hook 'after-change-functions 'litable-refresh nil t))
 
-(defun litable2-stop ()
+(defun litable-stop ()
   "Stop litable in the buffer."
-  (remove-hook 'after-change-functions 'litable2-refresh t)
-  ;; (remove-hook 'post-command-hook 'litable-update-defs-if-moved t)
+  (remove-hook 'after-change-functions 'litable-refresh t)
   (ov-clear 'litable))
 
 (defvar litable-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map [remap eval-defun] 'litable-eval-defun)
     map)
-  "litable mode map.")
+  "Keymap for `litable-mode'.")
 
 (defun litable-eval-defun (edebug-it)
-  "Eval defun and instrument it with litable info."
+  "Eval defun and instrument it with litable info.
+
+With EDEBUG-IT use `edebug-eval-defun' instead of
+`litable-eval-defun'."
   (interactive "P")
   (if edebug-it
       (edebug-eval-defun t)
@@ -384,14 +384,14 @@ If BEG and DEFNAME are set, print the value after the function."
 ;; TODO: if we turn the mode off, ideally we should un-instrument the
 ;; defuns back to whatever they were before
 ;;;###autoload
-(define-minor-mode litable2-mode
-  "Toggle litable2-mode"
-  :lighter " litable2"
+(define-minor-mode litable-mode
+  "Toggle litable-mode"
+  :lighter " litable"
   :keymap litable-mode-map
   :group 'litable
-  (if litable2-mode
-      (litable2-init)
-    (litable2-stop)))
+  (if litable-mode
+      (litable-init)
+    (litable-stop)))
 
 (provide 'instrument-defun)
 ;;; instrument-defun.el ends here
