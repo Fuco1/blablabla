@@ -309,7 +309,15 @@ If BEG and DEFNAME are set, print the value after the function."
   (ov beg beg
       'litable t
       'before-string (propertize
-                      (format " => %S" value)
+                      (format " => %S"
+                              (cond
+                               ((and (consp value)
+                                     (eq (car value) 'lambda))
+                                "#<lambda>")
+                               ((and (consp value)
+                                     (eq (car value) 'closure))
+                                "#<closure>")
+                               (t value)))
                       'face face))
   value)
 
