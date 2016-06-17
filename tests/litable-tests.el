@@ -337,3 +337,23 @@ Finally, FORMS are run."
                                'bar 'font-lock-warning-face)))
          (progn
            (litable-variable 22 23 'a a 'bar))))))
+
+(describe "Instrument form"
+
+  (it "should instrument a regular form"
+    (expect
+     (litable-test-with-temp-buffer "|(progn x)" nil
+       (litable--instrument-form
+        '(progn x)
+        (list :name 'bar :point 1)))
+     :to-equal
+      '(progn (litable-variable 7 8 'x x 'bar))))
+
+  (it "should not instrument a macro"
+    (expect
+     (litable-test-with-temp-buffer "|(pop x)" nil
+       (litable--instrument-form
+        '(pop x)
+        (list :name 'bar :point 1)))
+     :to-equal
+      '(pop x))))
