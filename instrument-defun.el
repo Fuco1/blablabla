@@ -165,11 +165,6 @@ DATA is the instrumentation state."
               (litable--instrument-form-body (cdddr form) data)))
          (cons
           arglist
-          ;; TODO: couldn't we do without the mapcar here? Add a
-          ;; shortcut to do the unwraping or implement it
-          ;; recursively even on the first argument... such that
-          ;; ((a) (b...)) goes down to `a'. This needs to be
-          ;; implemented in the `t' branch
           (litable--instrument-form-body (cddr form) data)))))))
 
 (defun litable--instrument-form (form data)
@@ -194,9 +189,6 @@ DATA is the instrumentation state."
      ((memq (car form) '(let let*))
       (prog1 (litable--instrument-let form data)
         (forward-sexp)))
-     ;; TODO: add replacement of `lambda' form arguments... at best
-     ;; reuse this code, or extract the common body into
-     ;; `litable--instrument-lambda'
      ((memq (car form) '(lambda defun))
       (prog1 (litable--instrument-function form data)
         (forward-sexp)))
@@ -221,8 +213,6 @@ DATA is the instrumentation state."
     (prog1 (litable-instrument-variable form data)
       (forward-symbol 1)))))
 
-;; TODO: save relative offsets against defun's top position so we dont
-;; have to reinstrument every time defun moves around
 (defun litable-instrument-defun ()
   "Instrument defun after point."
   (let* ((def (sexp-at-point))
