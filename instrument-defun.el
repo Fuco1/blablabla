@@ -31,6 +31,15 @@
 
 (require 'edebug)
 
+;; 24.3 compat
+(unless (fboundp 'macrop)
+  (defun macrop (object)
+    "Non-nil if and only if OBJECT is a macro."
+    (let ((def (indirect-function object t)))
+      (when (consp def)
+        (or (eq 'macro (car def))
+            (and (autoloadp def) (memq (nth 4 def) '(macro t))))))))
+
 ;; TODO: rename `data' to `state'
 (defun litable-point (data)
   "Return point relative to defun's beginning.
