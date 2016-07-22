@@ -284,7 +284,9 @@ DATA is the instrumentation state."
 BEG, END is the overlay range, VAR is the variable symbol and
 VALUE is its current value in the context where this function is
 called.  DEFNAME is the name of the defun.
-"
+
+The optional argument FACE determines the face of the overlay
+text."
   (setq face (or face 'font-lock-type-face))
   (ov (+ (get defname 'litable-defun-beg) beg)
       (+ (get defname 'litable-defun-beg) end)
